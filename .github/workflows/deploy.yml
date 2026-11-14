@@ -3,6 +3,8 @@ name: Deploy Angular to GitHub Pages
 on:
   push:
     branches: ["master"]
+  pull_request:
+    branches: ["master"]
   workflow_dispatch:
 
 permissions:
@@ -16,6 +18,7 @@ concurrency:
 
 jobs:
   build:
+    name: Build y pruebas
     runs-on: ubuntu-latest
     steps:
       # 1. Descargar el código
@@ -29,8 +32,9 @@ jobs:
           node-version: 24
           cache: npm
 
-      # 3. Configurar GitHub Pages
+      # 3. Configurar GitHub Pages (solo cuando se va a desplegar)
       - name: Setup Pages
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
 
       # 4. Instalar dependencias
@@ -56,12 +60,39 @@ jobs:
           path: ./dist/lab-pipelines-path/browser
 
   deploy:
+    name: Deploy
+    if: github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+
+  verify:
+    name: Verificar despliegue
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comprobar la app y una ruta interna
+        run: |
+          URL="${{ needs.deploy.outputs.page_url }}"
+          echo "Verificando $URL"
+          for i in $(seq 1 10); do
+            HOME_STATUS=$(curl -s -o home.html -w "%{http_code}" "$URL")
+            ROUTE_STATUS=$(curl -s -o route.html -w "%{http_code}" "${URL}proyectos")
+            echo "Intento $i -> inicio: $HOME_STATUS, /proyectos: $ROUTE_STATUS"
+            # La raíz debe responder 200; la ruta interna la sirve 404.html (estado 404), pero debe contener la app
+            if [ "$HOME_STATUS" = "200" ] && grep -q "<app-root" home.html && grep -q "<app-root" route.html; then
+              echo "✅ La app y el fallback de rutas internas funcionan"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "❌ La app no respondió correctamente"
+          exit 1
