@@ -45,11 +45,11 @@ GitHub Pages es un servidor de archivos estáticos. Si navegas dentro de la app 
 
 ## URL pública
 
-- App: https://ingdavidmora2005.github.io/lab-pipelines-patch/
+- App: https://juanpablo-devia.github.io/lab-pipelines-patch/
 - Rutas internas:
-  - https://ingdavidmora2005.github.io/lab-pipelines-patch/inicio
-  - https://ingdavidmora2005.github.io/lab-pipelines-patch/proyectos
-  - https://ingdavidmora2005.github.io/lab-pipelines-patch/contacto
+  - https://juanpablo-devia.github.io/lab-pipelines-patch/inicio
+  - https://juanpablo-devia.github.io/lab-pipelines-patch/proyectos
+  - https://juanpablo-devia.github.io/lab-pipelines-patch/contacto
 
 ## Cómo correrlo en local
 
@@ -68,7 +68,7 @@ En local no hace falta `--base-href` ni `404.html`: `ng serve` ya devuelve `inde
 
 El workflow está en [.github/workflows/deploy.yml](.github/workflows/deploy.yml) ("Deploy Angular to GitHub Pages").
 
-**Disparador:** cada `push` a la rama `master`, y también manualmente (`workflow_dispatch`). Tiene permisos `pages: write` e `id-token: write`, y el grupo de concurrencia `pages` evita dos despliegues simultáneos.
+**Disparadores:** cada `push` a la rama `master`, ejecución manual (`workflow_dispatch`) y cada `pull_request` hacia `master`; en los pull requests solo se ejecutan pruebas y build, **sin desplegar**. Tiene permisos `pages: write` e `id-token: write`, y el grupo de concurrencia `pages` evita dos despliegues simultáneos.
 
 **Job `build`** (ubuntu-latest):
 
@@ -82,6 +82,9 @@ El workflow está en [.github/workflows/deploy.yml](.github/workflows/deploy.yml
 8. **Upload artifact:** sube `./dist/lab-pipelines-path/browser` como artefacto de Pages (`actions/upload-pages-artifact@v3`).
 
 **Job `deploy`** (depende de `build`): publica el artefacto en el entorno `github-pages` con `actions/deploy-pages@v5` y expone la URL del sitio.
+
+
+**Verificación del despliegue (job `verify`):** después del deploy, hace peticiones a la URL publicada (hasta 10 intentos, cada 10 segundos). Exige que la raíz responda **200** con `<app-root>` en el HTML, y además pide la ruta interna `/proyectos` para comprobar que el `404.html` la rescata y sirve la app. Si algo falla, el pipeline queda en rojo.
 
 ## Estructura del proyecto
 
@@ -141,3 +144,6 @@ Todas las combinaciones de texto y fondo cumplen WCAG AA (mínimo 4.5:1); los va
 - David Mora Duque
 - Juan Pablo Devia
 - Juan Diego Rodriguez
+
+
+Repositorio original del equipo: https://github.com/INGDavidMora2005/lab-pipelines-patch
